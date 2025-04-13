@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[7]:
 
 
 import pandas as pd
@@ -56,22 +56,16 @@ def check_divergence(df):
     elif price_diff.iloc[-1] < 0 and cvd_diff.iloc[-1] > 0:
         return "Bullish Divergence"
     return "No Divergence"
-# Özet tabloyu göster
-summary_df = pd.DataFrame(summary_rows)
-print("\n Özet Trend Tablosu:\n")
-print(summary_df.to_string(index=False))
 
 # Grafikleri çizme
 def plot_cvd_volume(df, symbol, timeframe):
     fig, ax1 = plt.subplots(figsize=(10, 4))
     fig.suptitle(f"{symbol} - {timeframe} | CVD & Hacim", fontsize=14)
 
-    # CVD çizgisi (sol eksen)
     ax1.plot(df.index, df['cvd'], color='blue', label='CVD', linewidth=1.8)
     ax1.set_ylabel('CVD', color='blue')
     ax1.tick_params(axis='y', labelcolor='blue')
 
-    # Hacim çizgisi (sağ eksen)
     ax2 = ax1.twinx()
     ax2.plot(df.index, df['volume'], color='gray', linestyle='--', label='Hacim', linewidth=1.4)
     ax2.set_ylabel('Hacim', color='gray')
@@ -85,16 +79,15 @@ def plot_cvd_volume(df, symbol, timeframe):
     plt.tight_layout()
     plt.show()
 
-# Sembolleri analiz et. İstediğiniz pairleri buradan ekleyebilirsiniz.
+# Sembolleri analiz et
 symbols = ['ETHUSDT', 'BTCUSDT']
 summary_rows = []
 
+# Önce analiz yap ve summary_rows'u doldur
 for sym in symbols:
     timeframes = ['15m', '1h', '4h']
     score = 0
     trend_info = []
-
-    print(f"\n➔ {sym} Trend Analizi:")
 
     for tf in timeframes:
         df = get_ohlcv(sym, interval=tf, lookback=50)
@@ -112,9 +105,6 @@ for sym in symbols:
         if cvd_slope > 0: score += 1
         if vol_slope > 0: score += 1
 
-        print(f"➔ {tf}: CVD: {cvd_trend} ({cvd_slope:.2f}), Hacim: {vol_trend} ({vol_slope:.2f}), Divergence: {divergence}")
-        plot_cvd_volume(df, sym, tf)
-
         trend_info.append((tf, vol_trend, cvd_trend))
 
     if score >= 5:
@@ -131,6 +121,31 @@ for sym in symbols:
     row['Trend Skoru'] = f"{score}/6"
     row['Genel Trend'] = genel_trend
     summary_rows.append(row)
+
+#  Özet tabloyu analizden sonra hemen göster
+summary_df = pd.DataFrame(summary_rows)
+print("\n Özet Trend Tablosu:\n")
+print(summary_df.to_string(index=False))
+
+#  Sonrasında detaylı analizleri yazdır ve grafikleri göster
+for sym in symbols:
+    print(f"\n➔ {sym} Trend Analizi:")
+    timeframes = ['15m', '1h', '4h']
+    for tf in timeframes:
+        df = get_ohlcv(sym, interval=tf, lookback=50)
+        df = calculate_cvd(df)
+        df = normalize_volume(df)
+        df = cvd_momentum(df)
+
+        cvd_slope = linear_slope(df['cvd'], window=20)
+        vol_slope = linear_slope(df['volume'], window=20)
+        divergence = check_divergence(df)
+
+        cvd_trend = "Yükselen" if cvd_slope > 0 else "Düşen"
+        vol_trend = "Yükselen" if vol_slope > 0 else "Düşen"
+
+        print(f"➔ {tf}: CVD: {cvd_trend} ({cvd_slope:.2f}), Hacim: {vol_trend} ({vol_slope:.2f}), Divergence: {divergence}")
+        plot_cvd_volume(df, sym, tf)
 
 
 # In[ ]:
